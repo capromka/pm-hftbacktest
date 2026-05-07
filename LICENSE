@@ -1,3 +1,26 @@
+Proprietary License
+
+Copyright (c) 2026 mileswangs <wangshuosum@gmail.com>
+All rights reserved.
+
+This software and associated documentation files (the "Software") are
+proprietary and confidential. No license is granted to use, copy, modify,
+merge, publish, distribute, sublicense, sell, reverse engineer, decompile,
+disassemble, or create derivative works of the Software except as expressly
+authorized in writing by the copyright holder.
+
+The Software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and noninfringement. In no event shall the
+copyright holder be liable for any claim, damages, or other liability arising
+from, out of, or in connection with the Software or the use of the Software.
+
+Third-Party Notices
+-------------------
+
+Portions of this Software are derived from hftbacktest, originally licensed
+under the MIT License:
+
 MIT License
 
 Copyright (c) 2022 nkaz001@protonmail.com

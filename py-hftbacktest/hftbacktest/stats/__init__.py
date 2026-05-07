@@ -1,7 +1,9 @@
 from .stats import (
     Stats,
     InverseAssetRecord,
-    LinearAssetRecord
+    LinearAssetRecord,
+    PolyAssetRecord,
+    fix_record_prices
 )
 from .metrics import (
     Metric,
@@ -28,6 +30,8 @@ __all__ = (
     'Stats',
     'InverseAssetRecord',
     'LinearAssetRecord',
+    'PolyAssetRecord',
+    'fix_record_prices',
 
     'Metric',
     'Ret',

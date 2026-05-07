@@ -253,9 +253,9 @@ Please see the `roadmap <https://github.com/nkaz001/hftbacktest/blob/master/ROAD
     :alt: Rust crates.io version
     :target: https://crates.io/crates/hftbacktest
 
-.. |license| image:: https://img.shields.io/badge/License-MIT-green.svg
+.. |license| image:: https://img.shields.io/badge/License-Proprietary-red.svg
     :alt: License
-    :target: https://github.com/nkaz001/hftbacktest/blob/master/LICENSE
+    :target: https://github.com/mileswangs/pm-hbtbacktest/blob/main/LICENSE
 
 .. |docs| image:: https://readthedocs.org/projects/hftbacktest/badge/?version=latest
     :target: https://hftbacktest.readthedocs.io/en/latest/?badge=latest

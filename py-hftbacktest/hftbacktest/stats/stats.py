@@ -20,6 +20,35 @@ from .metrics import (
 from .utils import resample, monthly, daily, hourly
 
 
+def fix_record_prices(
+        record_arr: np.ndarray,
+        settlement: bool = True
+) -> np.ndarray:
+    prices = record_arr['price']
+    valid_idx = np.flatnonzero(np.isfinite(prices))
+    if len(valid_idx) == 0:
+        return record_arr
+
+    last_idx = int(valid_idx[-1])
+    raw_last_price = float(prices[last_idx])
+
+    if settlement:
+        if raw_last_price < 0.5:
+            settle_price = 0.0
+        elif raw_last_price > 0.5:
+            settle_price = 1.0
+        else:
+            settle_price = raw_last_price
+
+        prices[last_idx] = settle_price
+        if last_idx + 1 < len(prices):
+            tail_prices = prices[last_idx + 1:]
+            tail_nan = np.isnan(tail_prices)
+            tail_prices[tail_nan] = settle_price
+
+    return record_arr
+
+
 def compute_metrics(
         df: pl.DataFrame,
         metrics: List[Metric | Type[Metric]],
@@ -69,6 +98,17 @@ class Stats:
         self.entire = entire
         self.splits = splits
         self.kwargs = kwargs
+
+    @property
+    def earn(self) -> float:
+        equity_series = (
+            self.entire.with_columns(
+                (pl.col('equity_wo_fee') - pl.col('fee')).alias('equity')
+            )['equity']
+            .drop_nulls()
+            .drop_nans()
+        )
+        return float(equity_series[-1]) if len(equity_series) > 0 else 0.0
 
     def summary(self, pretty: bool = False):
         """
@@ -436,6 +476,23 @@ class LinearAssetRecord(Record):
                 self.df = self.df.with_columns(
                     pl.col('trading_value').diff().fill_null(0).alias('trading_value_')
                 )
+
+
+class PolyAssetRecord(LinearAssetRecord):
+    """
+    Polymarket record helper.
+
+    It applies Polymarket settlement price handling and otherwise behaves like
+    LinearAssetRecord.
+    """
+
+    def __init__(
+            self,
+            record_arr: NDArray,
+            settlement: bool = True
+    ):
+        self.record_arr = fix_record_prices(record_arr.copy(), settlement=settlement)
+        super().__init__(self.record_arr)
 
 
 class InverseAssetRecord(Record):

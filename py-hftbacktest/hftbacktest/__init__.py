@@ -1,6 +1,7 @@
 from typing import List, Any
 
 import numpy as np
+from numba import njit
 from numpy.typing import NDArray
 
 from ._hftbacktest import (
@@ -65,6 +66,8 @@ except:
 
 __all__ = (
     'BacktestAsset',
+    'BacktestAssetPoly',
+    'init_orderbook',
     'HashMapMarketDepthBacktest',
     'ROIVectorMarketDepthBacktest',
 
@@ -112,7 +115,7 @@ __all__ = (
     'Recorder'
 )
 
-__version__ = '2.4.4'
+__version__ = '1.0.0'
 
 
 class BacktestAsset(BacktestAsset_):
@@ -184,6 +187,38 @@ class BacktestAsset(BacktestAsset_):
         else:
             raise ValueError
         return self
+
+
+class BacktestAssetPoly(BacktestAsset):
+    """
+    BacktestAsset preset for Polymarket data.
+
+    The Polymarket-specific fixed settings are applied at construction time.
+    Data, latency, and fee model remain configurable through the normal
+    BacktestAsset chain methods.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.linear_asset(1.0)
+        self.risk_adverse_queue_model()
+        self.tick_size(0.001)
+        self.lot_size(5.0)
+        self.last_trades_capacity(0)
+        self.roi_lb(0.0)
+        self.roi_ub(1.0)
+
+
+@njit
+def init_orderbook(hbt, asset_no=0, max_iter=10000):
+    """Waits until the order book is initialized."""
+    for _ in range(max_iter):
+        if hbt.elapse(1_000_000) != 0:
+            return False
+        depth = hbt.depth(asset_no)
+        if depth.best_bid_tick > 0 and depth.best_ask_tick > 0:
+            return True
+    return False
 
 
 def HashMapMarketDepthBacktest(

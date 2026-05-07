@@ -5,9 +5,11 @@ from numba import njit
 
 from hftbacktest import (
     BacktestAsset,
+    BacktestAssetPoly,
     HashMapMarketDepthBacktest,
     ALL_ASSETS, ROIVectorMarketDepthBacktest
 )
+from hftbacktest.stats import PolyAssetRecord, fix_record_prices
 
 
 @njit
@@ -54,6 +56,38 @@ def test_run(hbt):
 class TestPyHftBacktest(unittest.TestCase):
     def setUp(self) -> None:
         pass
+
+    def test_polymarket_asset_preset_allows_variable_settings(self):
+        asset = (
+            BacktestAssetPoly()
+                .constant_order_latency(100, 100)
+                .trading_value_fee_model(0.0, 0.006)
+        )
+
+        self.assertIsInstance(asset, BacktestAsset)
+
+    def test_poly_asset_record_fixes_prices_and_computes_earn(self):
+        record = np.array(
+            [
+                (0, 10.0, 1.0, 0.40, 0.0),
+                (1_000_000_000, 10.0, 1.0, 0.60, 0.5),
+                (2_000_000_000, 10.0, 1.0, np.nan, 0.5),
+            ],
+            dtype=[
+                ('timestamp', 'i8'),
+                ('balance', 'f8'),
+                ('position', 'f8'),
+                ('price', 'f8'),
+                ('fee', 'f8'),
+            ],
+        )
+
+        fixed = fix_record_prices(record.copy())
+        self.assertEqual(fixed['price'][-2], 1.0)
+        self.assertEqual(fixed['price'][-1], 1.0)
+
+        stats = PolyAssetRecord(record).resample('1s').stats(book_size=100.0)
+        self.assertEqual(stats.earn, 10.5)
 
     def test_run_backtest(self):
         arr = np.load('tmp_20240501.npz')['data']

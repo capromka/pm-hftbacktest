@@ -3,12 +3,12 @@ requires = ["maturin~=1.7"]
 build-backend = "maturin"
 
 [project]
-name = "hftbacktest"
+name = "pm-hbtbacktest"
 description = "A high-frequency trading and market-making backtesting tool accounts for limit orders, queue positions, and latencies, utilizing full tick data for trades and order books."
 readme = "README.rst"
-authors = [{ name = "nkaz001", email = "nkaz001@protonmail.com" }]
+authors = [{ name = "mileswangs", email = "wangshuosum@gmail.com" }]
 license = { file = "LICENSE" }
-version = "2.4.4"
+version = "1.0.0"
 requires-python = ">=3.11"
 dependencies = [
  "numpy >=2.0, <2.3",
@@ -25,7 +25,7 @@ classifiers = [
   "Framework :: Jupyter",
   "Intended Audience :: Financial and Insurance Industry",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
+  "License :: Other/Proprietary License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
