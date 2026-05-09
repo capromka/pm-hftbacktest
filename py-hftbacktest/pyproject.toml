@@ -39,7 +39,7 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/nkaz001/hftbacktest"
+Repository = "https://github.com/mileswangs/pm-hbtbacktest"
 
 [project.optional-dependencies]
 databento = ["databento"]
