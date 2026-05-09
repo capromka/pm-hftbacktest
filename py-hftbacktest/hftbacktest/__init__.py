@@ -32,6 +32,7 @@ from .order import (
     MARKET,
 )
 from .recorder import Recorder
+from .data.utils.polymarket import polymarket_to_hbt
 from .types import (
     ALL_ASSETS,
     EVENT_ARRAY,
@@ -111,7 +112,9 @@ __all__ = (
 
     'LIMIT',
     'MARKET',
-    
+
+    'polymarket_to_hbt',
+
     'Recorder'
 )
 
