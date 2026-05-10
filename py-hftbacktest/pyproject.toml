@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pm-hftbacktest"
-description = "A high-frequency trading and market-making backtesting tool accounts for limit orders, queue positions, and latencies, utilizing full tick data for trades and order books."
+description = "A polymarket high-frequency trading and market-making backtesting tool"
 readme = "README.rst"
 authors = [{ name = "mileswangs", email = "wangshuosum@gmail.com" }]
 license = { file = "LICENSE" }
