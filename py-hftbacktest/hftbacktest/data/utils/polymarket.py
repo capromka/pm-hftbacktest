@@ -36,14 +36,65 @@ def _local_ts_ns_expr(
     return _ts_ns_expr(df, "local_timestamp")
 
 
-def _make_row(ev: int, exch_ts: int, local_ts: int, px: float, qty: float) -> NDArray:
-    row = np.zeros(1, dtype=event_dtype)
-    row[0]["ev"] = ev
-    row[0]["exch_ts"] = exch_ts
-    row[0]["local_ts"] = local_ts
-    row[0]["px"] = px
-    row[0]["qty"] = qty
-    return row
+def _make_book_events(
+    books: pl.DataFrame,
+    ts_expr: pl.Expr,
+    local_ts_expr: pl.Expr,
+) -> NDArray:
+    if len(books) == 0:
+        return np.zeros(0, dtype=event_dtype)
+
+    prepared = []
+    total_rows = 0
+    books = books.with_columns(
+        ts_expr.alias("ts"),
+        local_ts_expr.alias("local_ts"),
+    ).sort("ts")
+
+    for row in books.iter_rows(named=True):
+        book_ts = int(row["ts"])
+        book_local_ts = int(row["local_ts"])
+
+        for px_col, qty_col, side_flag in [
+            ("bid_prices", "bid_sizes", BUY_EVENT),
+            ("ask_prices", "ask_sizes", SELL_EVENT),
+        ]:
+            prices = row.get(px_col) or []
+            sizes = row.get(qty_col) or []
+            if not prices:
+                continue
+
+            n = min(len(prices), len(sizes))
+            prepared.append((book_ts, book_local_ts, side_flag, prices, sizes, n))
+            total_rows += 1 + n
+
+    out = np.zeros(total_rows, dtype=event_dtype)
+    pos = 0
+    for book_ts, book_local_ts, side_flag, prices, sizes, n in prepared:
+        clear_px = min(prices) if side_flag == BUY_EVENT else max(prices)
+        out[pos]["ev"] = DEPTH_CLEAR_EVENT | side_flag
+        out[pos]["exch_ts"] = book_ts
+        out[pos]["local_ts"] = book_local_ts
+        out[pos]["px"] = float(clear_px)
+        out[pos]["qty"] = 0.0
+        pos += 1
+
+        if n == 0:
+            continue
+
+        end = pos + n
+        sizes = sizes[:n]
+        if None in sizes:
+            float(None)
+
+        out["ev"][pos:end] = DEPTH_SNAPSHOT_EVENT | side_flag
+        out["exch_ts"][pos:end] = book_ts
+        out["local_ts"][pos:end] = book_local_ts
+        out["px"][pos:end] = prices[:n]
+        out["qty"][pos:end] = sizes
+        pos = end
+
+    return out
 
 
 def polymarket_to_hbt(
@@ -66,45 +117,9 @@ def polymarket_to_hbt(
 
     books = df.filter(pl.col("event_type") == "book")
     if len(books) > 0:
-        books = books.with_columns(
-            ts_expr.alias("ts"),
-            local_ts_expr.alias("local_ts"),
-        ).sort("ts")
-        for row in books.iter_rows(named=True):
-            book_ts = int(row["ts"])
-            book_local_ts = int(row["local_ts"])
-
-            for px_col, qty_col, side_flag in [
-                ("bid_prices", "bid_sizes", BUY_EVENT),
-                ("ask_prices", "ask_sizes", SELL_EVENT),
-            ]:
-                prices = row.get(px_col) or []
-                sizes = row.get(qty_col) or []
-                if not prices:
-                    continue
-
-                clear_px = min(prices) if side_flag == BUY_EVENT else max(prices)
-                parts.append(
-                    _make_row(
-                        DEPTH_CLEAR_EVENT | side_flag,
-                        book_ts,
-                        book_local_ts,
-                        float(clear_px),
-                        0.0,
-                    )
-                )
-
-                n = min(len(prices), len(sizes))
-                if n == 0:
-                    continue
-                snapshot = np.zeros(n, dtype=event_dtype)
-                for i in range(n):
-                    snapshot[i]["ev"] = DEPTH_SNAPSHOT_EVENT | side_flag
-                    snapshot[i]["exch_ts"] = book_ts
-                    snapshot[i]["local_ts"] = book_local_ts
-                    snapshot[i]["px"] = float(prices[i])
-                    snapshot[i]["qty"] = float(sizes[i])
-                parts.append(snapshot)
+        book_events = _make_book_events(books, ts_expr, local_ts_expr)
+        if len(book_events) > 0:
+            parts.append(book_events)
 
     trades = df.filter(
         (pl.col("event_type") == "last_trade_price")
