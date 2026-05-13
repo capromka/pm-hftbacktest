@@ -14,7 +14,7 @@ from ...types import (
 )
 from ..validation import correct_event_order
 
-DEFAULT_FALLBACK_LATENCY_NS = 20_000_000
+DEFAULT_LATENCY_NS = 20_000_000
 HBT_COLS = ["ev", "exch_ts", "local_ts", "px", "qty", "order_id", "ival", "fval"]
 
 
@@ -29,10 +29,12 @@ def _ts_ns_expr(df: pl.DataFrame, col: str = "timestamp") -> pl.Expr:
 def _local_ts_ns_expr(
     df: pl.DataFrame,
     exch_ts_expr: pl.Expr,
-    fallback_latency_ns: int,
+    constant_lantency: int | None,
 ) -> pl.Expr:
+    if constant_lantency is not None:
+        return exch_ts_expr + constant_lantency
     if "local_timestamp" not in df.columns:
-        return exch_ts_expr + fallback_latency_ns
+        return exch_ts_expr + DEFAULT_LATENCY_NS
     return _ts_ns_expr(df, "local_timestamp")
 
 
@@ -99,20 +101,22 @@ def _make_book_events(
 
 def polymarket_to_hbt(
     l2_df: Any,
-    fallback_latency_ns: int = DEFAULT_FALLBACK_LATENCY_NS,
+    constant_lantency: int | None = None,
 ) -> NDArray:
     r"""
     Converts a Polymarket L2 DataFrame into an HftBacktest event array.
 
     Args:
         l2_df: DataFrame containing the Polymarket L2 data.
-        fallback_latency_ns: Latency used when the input has no local timestamp
-                             data. Defaults to 20ms.
+        constant_lantency: Optional fixed latency in nanoseconds. When provided,
+                           it takes priority over local_timestamp. Otherwise,
+                           local_timestamp is used if available, falling back
+                           to 20ms.
     """
     df = pl.DataFrame(l2_df)
 
     ts_expr = _ts_ns_expr(df)
-    local_ts_expr = _local_ts_ns_expr(df, ts_expr, fallback_latency_ns)
+    local_ts_expr = _local_ts_ns_expr(df, ts_expr, constant_lantency)
     parts: list[NDArray] = []
 
     books = df.filter(pl.col("event_type") == "book")
