@@ -99,6 +99,57 @@ def _make_book_events(
     return out
 
 
+def _settle_price_from_winning_outcome(winning_outcome: Any) -> float | None:
+    if winning_outcome is None:
+        return None
+
+    if isinstance(winning_outcome, str):
+        outcome = winning_outcome.strip().lower()
+        if outcome in {"yes", "true", "1", "up"}:
+            return 1.0
+        if outcome in {"no", "false", "0", "down"}:
+            return 0.0
+        return None
+
+    try:
+        return 1.0 if float(winning_outcome) > 0.5 else 0.0
+    except (TypeError, ValueError):
+        return None
+
+
+def _append_resolved_book(df: pl.DataFrame) -> pl.DataFrame:
+    resolved = (
+        df
+        .filter(pl.col("event_type") == "market_resolved")
+        .filter(pl.col("winning_outcome").is_not_null())
+        .sort("timestamp")
+    )
+    if len(resolved) == 0:
+        return df
+
+    row = resolved.tail(1).to_dicts()[0]
+    settle_price = _settle_price_from_winning_outcome(row["winning_outcome"])
+    if settle_price is None:
+        return df
+
+    book = {col: None for col in df.columns}
+    book["timestamp"] = df.select(pl.col("timestamp").max()).item()
+    book["local_timestamp"] = df.select(pl.col("local_timestamp").max()).item()
+    book["event_type"] = "book"
+    if settle_price == 1.0:
+        book["bid_prices"] = [0.99]
+        book["bid_sizes"] = [1.0]
+        book["ask_prices"] = []
+        book["ask_sizes"] = []
+    else:
+        book["bid_prices"] = []
+        book["bid_sizes"] = []
+        book["ask_prices"] = [0.01]
+        book["ask_sizes"] = [1.0]
+
+    return pl.concat([df, pl.DataFrame([book], schema=df.schema)], how="vertical")
+
+
 def polymarket_to_hbt(
     l2_df: Any,
     constant_lantency: int | None = None,
@@ -114,6 +165,7 @@ def polymarket_to_hbt(
                            to 20ms.
     """
     df = pl.DataFrame(l2_df)
+    df = _append_resolved_book(df)
 
     ts_expr = _ts_ns_expr(df)
     local_ts_expr = _local_ts_ns_expr(df, ts_expr, constant_lantency)

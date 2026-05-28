@@ -7,7 +7,9 @@ from hftbacktest import (
     BacktestAsset,
     BacktestAssetPoly,
     HashMapMarketDepthBacktest,
-    ALL_ASSETS, ROIVectorMarketDepthBacktest
+    ALL_ASSETS, ROIVectorMarketDepthBacktest,
+    DEPTH_SNAPSHOT_EVENT, BUY_EVENT, SELL_EVENT,
+    EXCH_EVENT, LOCAL_EVENT, polymarket_to_hbt
 )
 from hftbacktest.stats import PolyAssetRecord, fix_record_prices
 
@@ -88,6 +90,49 @@ class TestPyHftBacktest(unittest.TestCase):
 
         stats = PolyAssetRecord(record).resample('1s').stats(book_size=100.0)
         self.assertEqual(stats.earn, 10.5)
+
+    def test_polymarket_to_hbt_uses_winning_outcome_as_final_book(self):
+        data = polymarket_to_hbt(
+            {
+                'market_slug': ['m', 'm'],
+                'timestamp': [1_000, 2_000],
+                'local_timestamp': [1_100, 2_100],
+                'event_type': ['book', 'market_resolved'],
+                'ask_prices': [[0.6], None],
+                'ask_sizes': [[10.0], None],
+                'bid_prices': [[0.4], None],
+                'bid_sizes': [[10.0], None],
+                'best_ask': [0.6, None],
+                'best_bid': [0.4, None],
+                'pc_price': [None, None],
+                'pc_size': [None, None],
+                'pc_side': [None, None],
+                'new_tick_size': [None, None],
+                'trade_price': [None, None],
+                'trade_size': [None, None],
+                'trade_side': [None, None],
+                'trade_is_mirror': [None, None],
+                'winning_outcome': [None, 'Yes'],
+            },
+            constant_lantency=100,
+        )
+
+        event_mask = np.uint64(
+            ~(EXCH_EVENT | LOCAL_EVENT) & np.iinfo(np.uint64).max
+        )
+        base_ev = data['ev'] & event_mask
+        bid_snapshots = data[
+            (base_ev == (DEPTH_SNAPSHOT_EVENT | BUY_EVENT))
+            & (data['exch_ts'] == 2_000_000_000)
+        ]
+        ask_snapshots = data[
+            (base_ev == (DEPTH_SNAPSHOT_EVENT | SELL_EVENT))
+            & (data['exch_ts'] == 2_000_000_000)
+        ]
+
+        self.assertEqual(len(bid_snapshots), 1)
+        self.assertEqual(len(ask_snapshots), 0)
+        self.assertEqual(bid_snapshots['px'][0], 0.99)
 
     def test_run_backtest(self):
         arr = np.load('tmp_20240501.npz')['data']
