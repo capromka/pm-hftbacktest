@@ -143,11 +143,16 @@ Polymarket HftBacktest
        recorder.record(hbt)
 
 
+   import requests
+
    slug = "btc-updown-15m-1778263200"
-   df = pd.read_parquet(
-       f"https://s.wangshuox.com/poly_l2/{slug}.parquet",
-       storage_options={"User-Agent": "Mozilla/5.0"},
-   )
+   data_type = "poly_l2"  # or "poly_snapshot"
+   url = f"https://api.pmdata.dev/get-download-url/{data_type}/{slug}"
+   # Get your Free API key from https://pmdata.dev/
+   resp = requests.get(url, headers={"api_key": "<YOUR_API_KEY>"})
+   resp.raise_for_status()
+   download_url = resp.json()["download_url"]
+   df = pd.read_parquet(download_url)
 
    data = polymarket_to_hbt(df)
 
