@@ -8,7 +8,7 @@ from hftbacktest import (
     BacktestAssetPoly,
     HashMapMarketDepthBacktest,
     ALL_ASSETS, ROIVectorMarketDepthBacktest,
-    DEPTH_SNAPSHOT_EVENT, BUY_EVENT, SELL_EVENT,
+    DEPTH_CLEAR_EVENT, DEPTH_SNAPSHOT_EVENT, BUY_EVENT, SELL_EVENT,
     EXCH_EVENT, LOCAL_EVENT, polymarket_to_hbt
 )
 from hftbacktest.stats import PolyAssetRecord, fix_record_prices
@@ -131,8 +131,55 @@ class TestPyHftBacktest(unittest.TestCase):
         ]
 
         self.assertEqual(len(bid_snapshots), 1)
-        self.assertEqual(len(ask_snapshots), 0)
-        self.assertEqual(bid_snapshots['px'][0], 0.99)
+        self.assertEqual(len(ask_snapshots), 1)
+        self.assertEqual(bid_snapshots['px'][0], 0.998)
+        self.assertEqual(bid_snapshots['qty'][0], 0.01)
+        self.assertEqual(ask_snapshots['px'][0], 1.0)
+        self.assertEqual(ask_snapshots['qty'][0], 0.01)
+
+    def test_polymarket_to_hbt_clears_empty_snapshot_sides(self):
+        data = polymarket_to_hbt(
+            {
+                'market_slug': ['m', 'm'],
+                'timestamp': [1_000, 2_000],
+                'local_timestamp': [1_100, 2_100],
+                'event_type': ['book', 'book'],
+                'ask_prices': [[0.6], []],
+                'ask_sizes': [[10.0], []],
+                'bid_prices': [[0.4], []],
+                'bid_sizes': [[10.0], []],
+                'best_ask': [0.6, None],
+                'best_bid': [0.4, None],
+                'pc_price': [None, None],
+                'pc_size': [None, None],
+                'pc_side': [None, None],
+                'new_tick_size': [None, None],
+                'trade_price': [None, None],
+                'trade_size': [None, None],
+                'trade_side': [None, None],
+                'trade_is_mirror': [None, None],
+                'winning_outcome': [None, None],
+            },
+            constant_lantency=100,
+        )
+
+        event_mask = np.uint64(
+            ~(EXCH_EVENT | LOCAL_EVENT) & np.iinfo(np.uint64).max
+        )
+        base_ev = data['ev'] & event_mask
+        bid_clears = data[
+            (base_ev == (DEPTH_CLEAR_EVENT | BUY_EVENT))
+            & (data['exch_ts'] == 2_000_000_000)
+        ]
+        ask_clears = data[
+            (base_ev == (DEPTH_CLEAR_EVENT | SELL_EVENT))
+            & (data['exch_ts'] == 2_000_000_000)
+        ]
+
+        self.assertEqual(len(bid_clears), 1)
+        self.assertEqual(len(ask_clears), 1)
+        self.assertEqual(bid_clears['px'][0], 0.0)
+        self.assertEqual(ask_clears['px'][0], 1.0)
 
     def test_run_backtest(self):
         arr = np.load('tmp_20240501.npz')['data']

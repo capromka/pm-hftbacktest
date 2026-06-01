@@ -16,6 +16,8 @@ from ..validation import correct_event_order
 
 DEFAULT_LATENCY_NS = 20_000_000
 HBT_COLS = ["ev", "exch_ts", "local_ts", "px", "qty", "order_id", "ival", "fval"]
+POLY_MIN_PRICE = 0.0
+POLY_MAX_PRICE = 1.0
 
 
 def _ts_ns_expr(df: pl.DataFrame, col: str = "timestamp") -> pl.Expr:
@@ -63,8 +65,6 @@ def _make_book_events(
         ]:
             prices = row.get(px_col) or []
             sizes = row.get(qty_col) or []
-            if not prices:
-                continue
 
             n = min(len(prices), len(sizes))
             prepared.append((book_ts, book_local_ts, side_flag, prices, sizes, n))
@@ -73,7 +73,10 @@ def _make_book_events(
     out = np.zeros(total_rows, dtype=event_dtype)
     pos = 0
     for book_ts, book_local_ts, side_flag, prices, sizes, n in prepared:
-        clear_px = min(prices) if side_flag == BUY_EVENT else max(prices)
+        if prices:
+            clear_px = max(prices) if side_flag == BUY_EVENT else min(prices)
+        else:
+            clear_px = POLY_MIN_PRICE if side_flag == BUY_EVENT else POLY_MAX_PRICE
         out[pos]["ev"] = DEPTH_CLEAR_EVENT | side_flag
         out[pos]["exch_ts"] = book_ts
         out[pos]["local_ts"] = book_local_ts
@@ -137,15 +140,15 @@ def _append_resolved_book(df: pl.DataFrame) -> pl.DataFrame:
     book["local_timestamp"] = df.select(pl.col("local_timestamp").max()).item()
     book["event_type"] = "book"
     if settle_price == 1.0:
-        book["bid_prices"] = [0.99]
-        book["bid_sizes"] = [1.0]
-        book["ask_prices"] = []
-        book["ask_sizes"] = []
+        book["bid_prices"] = [0.998]
+        book["bid_sizes"] = [0.01]
+        book["ask_prices"] = [1.0]
+        book["ask_sizes"] = [0.01]
     else:
-        book["bid_prices"] = []
-        book["bid_sizes"] = []
-        book["ask_prices"] = [0.01]
-        book["ask_sizes"] = [1.0]
+        book["bid_prices"] = [0.001]
+        book["bid_sizes"] = [0.01]
+        book["ask_prices"] = [0.003]
+        book["ask_sizes"] = [0.01]
 
     return pl.concat([df, pl.DataFrame([book], schema=df.schema)], how="vertical")
 

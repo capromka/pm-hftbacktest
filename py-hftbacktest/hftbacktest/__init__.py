@@ -206,7 +206,7 @@ class BacktestAssetPoly(BacktestAsset):
         self.linear_asset(1.0)
         self.risk_adverse_queue_model()
         self.tick_size(0.001)
-        self.lot_size(5.0)
+        self.lot_size(0.001)
         self.last_trades_capacity(0)
         self.roi_lb(0.0)
         self.roi_ub(1.0)
