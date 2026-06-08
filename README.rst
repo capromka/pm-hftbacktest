@@ -22,21 +22,8 @@ Polymarket HftBacktest
 数据获取
 --------
 
-Polymarket L2 和 snapshot 示例数据通过 pmdata.dev 提供。先在
-`pmdata.dev <https://pmdata.dev/>`_ 获取 Free API key，然后在下载时传入
-``storage_options``：
-
-.. code-block:: python
-
-   import pandas as pd
-
-   slug = "btc-updown-5m-1778803200"
-   data_type = "poly_l2"  # or "poly_snapshot"
-   url = f"https://api.pmdata.dev/download/{data_type}/{slug}.parquet"
-   df = pd.read_parquet(
-       url,
-       storage_options={"api_key": "<YOUR_API_KEY>", "User-Agent": "Mozilla/5.0"},
-   )
+Polymarket L2 和 snapshot 示例数据通过 pmdata.dev 提供，请先从
+`pmdata.dev <https://pmdata.dev/>`_ 获取 API key。
 
 示例
 ====
