@@ -1454,7 +1454,6 @@ dependencies = [
     { name = "numba" },
     { name = "numpy" },
     { name = "polars" },
-    { name = "requests" },
 ]
 
 [package.optional-dependencies]
@@ -1470,7 +1469,6 @@ requires-dist = [
     { name = "numba", specifier = "~=0.61" },
     { name = "numpy", specifier = ">=2.0,<2.3" },
     { name = "polars" },
-    { name = "requests" },
 ]
 provides-extras = ["databento"]
 
