@@ -8,6 +8,7 @@ Polymarket HftBacktest
 * Polymarket tick 级别回测
 * 使用 `Numba <https://numba.pydata.org/>`_ JIT 和 Rust 实现快速执行
 * 面向策略研究和撮合执行模拟
+* 兼容 hftbacktest 生态
 
 快速开始
 ========
@@ -22,7 +23,7 @@ Polymarket HftBacktest
 数据获取
 --------
 
-Polymarket L2 和 snapshot 示例数据通过 pmdata.dev 提供，请先从
+polymarket数据pmdata.dev **免费** 提供，请先从
 `pmdata.dev <https://pmdata.dev/>`_ 获取 API key。
 
 示例
